@@ -2,7 +2,7 @@
 useful for removing blackground off illustrations
 
 ## Requirements
-ezImageGrid requires the followings to work:
+the ollowings are required for the program to work:
 - Python 3
 - Pillow
 

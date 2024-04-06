@@ -1,0 +1,3 @@
+Usage:
+    %progName% path_to_image [white_level, black_level]
+    %progName% -h|--help

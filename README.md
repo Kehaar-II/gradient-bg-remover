@@ -2,7 +2,7 @@
 useful for removing blackground off illustrations
 
 ## Requirements
-the ollowings are required for the program to work:
+the followings are required for the program to work:
 - Python 3
 - Pillow
 

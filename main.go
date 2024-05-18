@@ -2,27 +2,40 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
+	"image/jpeg"
 	"image/png"
 	"log"
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 func getParentPathFromFilename(filename string) string {
 	return filename[:len(filename)-len(filepath.Ext(filename))]
 }
 
-func loadPNG(filePath string) (image.Image, error) {
+func loadImage(filePath string) (image.Image, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	img, err := png.Decode(f)
+
+	var img image.Image = nil
+
+	if strings.HasSuffix(filePath, ".png") {
+		img, err = png.Decode(f)
+	} else if strings.HasSuffix(filePath, ".jpg") || strings.HasSuffix(filePath, ".jpeg") {
+		img, err = jpeg.Decode(f)
+	} else {
+		return img, errors.New("incorrect image format")
+	}
+
 	return img, err
 }
 
@@ -41,59 +54,108 @@ func savePNG(img image.NRGBA, filename string) error {
 	return nil
 }
 
-func clamp(min int, x int, max int) int {
-	if x > max {
-		return max
+func rgb_to_value(r uint8, g uint8, b uint8) uint8 {
+	var max uint8 = 0
+
+	if r > max {
+		max = r
 	}
-	if x < min {
-		return min
+	if g > max {
+		max = g
 	}
-	return x
+	if b > max {
+		max = b
+	}
+	return max
 }
 
-func remove_bg(img image.NRGBA, min int, max int) image.NRGBA {
+func remove_bg(img image.NRGBA, min uint8, max uint8) image.NRGBA {
 	size := img.Bounds().Size()
+	var val uint64 = 0
 
 	for i := 0; i < size.X; i++ {
 		for j := 0; j < size.Y; j++ {
 			r, g, b, _ := img.At(i, j).RGBA()
-			ur := uint8(r)
-			ug := uint8(g)
-			ub := uint8(b)
-			avg := (int(ur) + int(ug) + int(ub)) / 3
+			val = uint64(255 - rgb_to_value(uint8(r), uint8(g), uint8(b)))
 
+			if val <= uint64(min) {
+				val = 0
+			} else {
+				val = val*255/uint64(max-min) + uint64(min)
+			}
 			img.SetNRGBA(i, j, color.NRGBA{
-				R: ur,
-				G: ug,
-				B: ub,
-				A: uint8(clamp(0, max-avg, 255)),
+				R: 0,
+				G: 0,
+				B: 0,
+				A: uint8(val),
 			})
 		}
 	}
-
 	return img
 }
 
-func main() {
+func parseArguments() (string, uint8, uint8, error) {
 	argv := os.Args
-	argc := len(os.Args)
+	argc := len(argv)
 
-	if argc != 4 {
-		log.Fatal(errors.New("missing argument(s)"))
+	if argc < 2 {
+		return "", 0, 0, errors.New("too few arguments")
 	}
 
 	filename := argv[1]
-	img, err := loadPNG(filename)
+	if !(strings.HasSuffix(filename, ".jpg") || strings.HasSuffix(filename, ".jpeg") || strings.HasSuffix(filename, ".png")) {
+		return "", 0, 0, errors.New("file not in a valid format")
+	}
+
+	var err error = nil
+	var max int = 255
+	var min int = 0
+	for i := 2; i < argc; i += 2 {
+		if argv[i][0] == '-' {
+			if i == argc-1 {
+				return "", 0, 0, errors.New("argument with no value")
+			}
+			if argv[i] == "-w" {
+				max, err = strconv.Atoi(argv[i+1])
+				if err != nil {
+					return "", 0, 0, errors.New("white level not a number")
+				}
+			} else if argv[i] == "-b" {
+				min, err = strconv.Atoi(argv[i+1])
+				if err != nil {
+					return "", 0, 0, errors.New("black level not a number")
+				}
+			} else {
+
+			}
+		} else {
+			fmt.Printf("%s\n", argv[i])
+			return "", 0, 0, errors.New("incorrect format")
+		}
+	}
+
+	if max > 255 || max < 0 {
+		return "", 0, 0, errors.New("white level not in range")
+	}
+	if min > 255 || min < 0 {
+		return "", 0, 0, errors.New("black level not in range")
+	}
+	if min >= max {
+		return "", 0, 0, errors.New("black level > white level")
+	}
+
+	return filename, uint8(min), uint8(max), nil
+}
+
+func main() {
+	filename, min, max, err := parseArguments()
 	if err != nil {
 		log.Fatal(err)
 	}
-	min, err := strconv.Atoi(argv[2])
+
+	img, err := loadImage(filename)
 	if err != nil {
-		log.Fatal(errors.New("min not a number"))
-	}
-	max, err := strconv.Atoi(argv[3])
-	if err != nil {
-		log.Fatal(errors.New("max not a number"))
+		log.Fatal(err)
 	}
 
 	bounds := img.Bounds()

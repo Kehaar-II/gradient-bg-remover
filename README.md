@@ -1,12 +1,12 @@
 #  gradient-bg-remover
-useful for removing blackground off illustrations
+useful for removing blackground from illustrations
 
 ## Requirements
 go
 
 ## Usage
 ```
-$ go run . path_to_image white_level, black_level
+$ go run . path_to_image [-b black_level] [-w white_level]
 ```
 
 ## TODO

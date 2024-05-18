@@ -54,7 +54,8 @@ func savePNG(img image.NRGBA, filename string) error {
 	return nil
 }
 
-func rgb_to_value(r uint8, g uint8, b uint8) uint8 {
+// hsv value
+func get_value_from_rgb(r uint8, g uint8, b uint8) uint8 {
 	var max uint8 = 0
 
 	if r > max {
@@ -76,10 +77,11 @@ func remove_bg(img image.NRGBA, min uint8, max uint8) image.NRGBA {
 	for i := 0; i < size.X; i++ {
 		for j := 0; j < size.Y; j++ {
 			r, g, b, _ := img.At(i, j).RGBA()
-			val = rgb_to_value(uint8(r), uint8(g), uint8(b))
+			val = get_value_from_rgb(uint8(r), uint8(g), uint8(b))
 
+			// directly setting to 255 and 0 since the values are being normalized
+			// saves having to normalize a known value
 			if val > max {
-				// directly setting to 255 and 0 since the inbetween value are be stretched between these 2 value
 				val = 255
 			} else if val < min {
 				val = 0

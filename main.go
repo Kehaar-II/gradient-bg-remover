@@ -71,26 +71,33 @@ func rgb_to_value(r uint8, g uint8, b uint8) uint8 {
 
 func remove_bg(img image.NRGBA, min uint8, max uint8) image.NRGBA {
 	size := img.Bounds().Size()
-	var val uint64 = 0
+	var val uint8 = 0
 
 	for i := 0; i < size.X; i++ {
 		for j := 0; j < size.Y; j++ {
 			r, g, b, _ := img.At(i, j).RGBA()
-			val = uint64(255 - rgb_to_value(uint8(r), uint8(g), uint8(b)))
+			val = rgb_to_value(uint8(r), uint8(g), uint8(b))
 
-			if val <= uint64(min) {
+			if val > max {
+				// directly setting to 255 and 0 since the inbetween value are be stretched between these 2 value
+				val = 255
+			} else if val < min {
 				val = 0
 			} else {
-				val = val*255/uint64(max-min) + uint64(min)
+				val -= min
+				val *= 255
+				val /= max
 			}
+
 			img.SetNRGBA(i, j, color.NRGBA{
 				R: 0,
 				G: 0,
 				B: 0,
-				A: uint8(val),
+				A: 255 - uint8(val),
 			})
 		}
 	}
+
 	return img
 }
 
